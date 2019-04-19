@@ -1,0 +1,444 @@
+#!/bin/bash
+
+echo "Laboratório 1"
+echo "Aluno: Gustavo Belançon Mendes, ra 99037"
+echo
+echo "________________________________________"
+echo
+
+mkdir laboratorio1_99037
+cd laboratorio1_99037
+
+#-h help
+hfuncao(){
+
+	sleep 1
+	echo
+	echo "Para instalar o sniper e compilá-lo, execute o comando -i"
+	echo
+	echo "Para instalar o diretório benchmarks e os programas contidos em NPB-OMP 3.3.1, execute o comando -p"
+	echo 
+	echo "Se desejar iniciar as simulações, execute o comando -s. Todos os resultados das simulações serão gravados no diretório resultados."
+	echo
+	echo "Caso queira gerar os dados adicionais para análise, entre com o comando -d, estes dados serão salvos no diretório mcpat."
+	echo 
+	echo "Agora, se desenar gerar o relatório, dê o comando -r"
+
+}
+#-i instala o simulador sniper no diretorio sniper
+ifuncao(){
+
+	echo "Realizando download do sniper..."
+	git clone http://snipersim.org/download/276216856c3d09f4/git/sniper.git
+
+	cd sniper
+
+	echo 
+	echo "Instalando pacote pin_kit"
+	wget https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.7-97619-g0d0c92f4f-gcc-linux.tar.gz
+	tar -xvzf pin-3.7-97619-g0d0c92f4f-gcc-linux.tar.gz 
+	mv pin-3.7-97619-g0d0c92f4f-gcc-linux pin_kit
+	make
+	
+	mkdir configuracoes
+	cd configuracoes
+	sleep 2
+	echo "CRIANDO ARQUIVOS DE CONFIGURAÇÃO"
+	sleep 2
+	echo "ENTRE COM AS CONFIGURAÇÕES DA ARQUITETURA 1"
+	echo	
+
+	CFG1="# Configuration file for Xeon X5550 Gainestown\n# See http://en.wikipedia.org/wiki/Gainestown_(microprocessor)#Gainestown\n# and http://ark.intel.com/products/37106\n\n#include nehalem\n\n[perf_model/core]\nfrequency = 2.40\nlogical_cpus=2\n[perf_model/branch_predictor]\ntype = pentium_m\nmispredict_penalty=15 # From microarchitecture.pdf\n\n[perf_model/l3_cache]\nperfect = false\ncache_block_size = 64\ncache_size = 8192\nassociativity = 16\naddress_hash = mask\nreplacement_policy = lru\ndata_access_time = 30 # 35 cycles total according to membench, +L1+L2 tag times\ntags_access_time = 10\nperf_model_type = parallel\nwritethrough = 0\nshared_cores = 4\n\n[perf_model/dram_directory]\n# total_entries = number of entries per directory controller.\ntotal_entries = 1048576\nassociativity = 16\ndirectory_type = full_map\n\n[perf_model/dram]\n# -1 means that we have a number of distributed DRAM controllers (4 in this case)\nnum_controllers = -1\ncontrollers_interleaving = 4\n# DRAM access latency in nanoseconds. Should not include L1-LLC tag access time, directory access time (14 cycles = 5.2 ns),\n# or network time [(cache line size + 2*{overhead=40}) / network bandwidth = 18 ns]\n# Membench says 175 cycles @ 2.66 GHz = 66 ns total\nlatency = 45\nper_controller_bandwidth = 7.6              # In GB/s, as measured by core_validation-dram\nchips_per_dimm = 8\ndimms_per_controller = 4\ntype = constant\n\n[network]\nmemory_model_1 = bus\nmemory_model_2 = bus\n\n[network/bus]\nbandwidth = 25.6 # in GB/s. Actually, it's 12.8 GB/s per direction and per connected chip pair\nignore_local_traffic = true # Memory controllers are on-chip, so traffic from core0 to dram0 does not use the QPI links\n\n"
+	echo -e $CFG1 > arquitetura1.cfg
+	echo "ARQUIVO DE CONFIGURAÇÃO DA ARQUITETURA 1 CRIADO!"
+	sleep 3
+	
+	echo
+	echo "ENTRE COM AS CONFIGURAÇÕES DA ARQUITETURA 2: "
+	
+	CFG2="# Configuration file for Xeon X5550 Gainestown\n# See http://en.wikipedia.org/wiki/Gainestown_(microprocessor)#Gainestown\n# and http://ark.intel.com/products/37106\n\n#include nehalem\n\n[perf_model/core]\nfrequency = 2.40\nlogical_cpus=2\n[perf_model/branch_predictor]\ntype = pentium_m\nmispredict_penalty=15 # From microarchitecture.pdf\n\n[perf_model/l3_cache]\nperfect = false\ncache_block_size = 64\ncache_size = 8192\nassociativity = 16\naddress_hash = mask\nreplacement_policy = random\ndata_access_time = 30 # 35 cycles total according to membench, +L1+L2 tag times\ntags_access_time = 10\nperf_model_type = parallel\nwritethrough = 0\nshared_cores = 4\n\n[perf_model/dram_directory]\n# total_entries = number of entries per directory controller.\ntotal_entries = 1048576\nassociativity = 16\ndirectory_type = full_map\n\n[perf_model/dram]\n# -1 means that we have a number of distributed DRAM controllers (4 in this case)\nnum_controllers = -1\ncontrollers_interleaving = 4\n# DRAM access latency in nanoseconds. Should not include L1-LLC tag access time, directory access time (14 cycles = 5.2 ns),\n# or network time [(cache line size + 2*{overhead=40}) / network bandwidth = 18 ns]\n# Membench says 175 cycles @ 2.66 GHz = 66 ns total\nlatency = 45\nper_controller_bandwidth = 7.6              # In GB/s, as measured by core_validation-dram\nchips_per_dimm = 8\ndimms_per_controller = 4\ntype = constant\n\n[network]\nmemory_model_1 = bus\nmemory_model_2 = bus\n\n[network/bus]\nbandwidth = 25.6 # in GB/s. Actually, it's 12.8 GB/s per direction and per connected chip pair\nignore_local_traffic = true # Memory controllers are on-chip, so traffic from core0 to dram0 does not use the QPI links\n\n"
+	echo -e $CFG2 > arquitetura2.cfg
+	echo 
+	echo "ARQUIVO DE CONFIGURAÇÃO DA ARQUITETURA 2 CRIADO!"
+	cd ..
+	cd ..
+
+}
+#-p instala o diretório benchmarks e os programas contidos em NPB-OMP 3.3.1
+pfuncao(){
+	cd sniper
+	DIR=$(pwd)
+	sleep 2
+	echo
+	echo "Instalando o pacote benchmarks e o programa  NPB-OMP 3.3.1"
+	git clone http://snipersim.org/git/benchmarks.git
+	cd benchmarks
+
+	sleep 1
+	echo
+	echo "Configurando NPB-OMP 3.3.1"
+	export GRAPHITE_ROOT=~$DIR
+	export BENCHMARKS_ROOT=$(pwd)
+	make -C tools/hooks
+	make -C npb
+
+	sleep 1
+	echo 
+	echo
+	echo "Programa configurado e pronto para as simulações"
+	sleep 2
+
+	cd ..
+	cd ..
+}
+
+#-s realiza as simulações e grava os resultados no diretório resultados
+sfuncao(){
+	#BT
+	cd sniper
+	export OMP_NUM_THREADS=8
+	mkdir resultados
+	DIR=$(pwd)
+	echo "INÍCIO DAS SIMULAÇÕES"
+	sleep 2
+	echo "SIMULAÇÕES COM AS CONFIGURAÇÕES DA ARQUITETURA 1"
+	sleep 2	
+	echo
+	echo "**********************************************"
+	echo ">>>>>>>>>> ARQUITETURA 1 BT COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/bt.W.x
+	cd resultados
+	mv sim.cfg BT.arquitetura1.sim.cfg
+	mv sim.info BT.arquitetura1.sim.info
+	mv sim.out BT.arquitetura1.sim.out
+	mv sim.stats.sqlite3 BT.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 BT TERMINOU <<<<<<<<<<"
+	echo
+	#CG
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 CG COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/cg.W.x
+	cd resultados
+	mv sim.cfg CG.arquitetura1.sim.cfg
+	mv sim.info CG.arquitetura1.sim.info
+	mv sim.out CG.arquitetura1.sim.out
+	mv sim.stats.sqlite3 CG.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 CG TERMINOU <<<<<<<<<<"
+	echo
+	#DC
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 DC COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/dc.W.x
+	cd resultados
+	mv sim.cfg DC.arquitetura1.sim.cfg
+	mv sim.info DC.arquitetura1.sim.info
+	mv sim.out DC.arquitetura1.sim.out
+	mv sim.stats.sqlite3 DC.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 DC TERMINOU <<<<<<<<<<"
+	echo
+	#EP
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 EP COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/ep.W.x
+	cd resultados
+	mv sim.cfg EP.arquitetura1.sim.cfg
+	mv sim.info EP.arquitetura1.sim.info
+	mv sim.out EP.arquitetura1.sim.out
+	mv sim.stats.sqlite3 EP.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 EP TERMINOU <<<<<<<<<<"
+	echo
+	#FT
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 FT COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/ft.W.x
+	cd resultados
+	mv sim.cfg FT.arquitetura1.sim.cfg
+	mv sim.info FT.arquitetura1.sim.info
+	mv sim.out FT.arquitetura1.sim.out
+	mv sim.stats.sqlite3 FT.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 FT TERMINOU <<<<<<<<<<"
+	echo
+	#IS
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 IS COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/is.W.x
+	cd resultados
+	mv sim.cfg IS.arquitetura1.sim.cfg
+	mv sim.info IS.arquitetura1.sim.info
+	mv sim.out IS.arquitetura1.sim.out
+	mv sim.stats.sqlite3 IS.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 IS TERMINOU <<<<<<<<<<"
+	echo
+	#LU
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 LU COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/lu.W.x
+	cd resultados
+	mv sim.cfg LU.arquitetura1.sim.cfg
+	mv sim.info LU.arquitetura1.sim.info
+	mv sim.out LU.arquitetura1.sim.out
+	mv sim.stats.sqlite3 LU.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 LU TERMINOU <<<<<<<<<<"
+	echo
+	#MG
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 MG COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/mg.W.x
+	cd resultados
+	mv sim.cfg MG.arquitetura1.sim.cfg
+	mv sim.info MG.arquitetura1.sim.info
+	mv sim.out MG.arquitetura1.sim.out
+	mv sim.stats.sqlite3 MG.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 MG TERMINOU <<<<<<<<<<"
+	echo
+	#SP
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 SP COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/sp.W.x
+	cd resultados
+	mv sim.cfg SP.arquitetura1.sim.cfg
+	mv sim.info SP.arquitetura1.sim.info
+	mv sim.out SP.arquitetura1.sim.out
+	mv sim.stats.sqlite3 SP.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 SP TERMINOU <<<<<<<<<<"
+	echo
+	#UA
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 1 UA COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura1.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/ua.W.x
+	cd resultados
+	mv sim.cfg UA.arquitetura1.sim.cfg
+	mv sim.info UA.arquitetura1.sim.info
+	mv sim.out UA.arquitetura1.sim.out
+	mv sim.stats.sqlite3 UA.arquitetura1.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 1 UA TERMINOU <<<<<<<<<<"
+	echo
+	sleep 2
+	echo "INÍCIO CONFIGURAÇÕES ARQUITETURA 2"
+	sleep 2
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 BT COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/bt.W.x
+	cd resultados
+	mv sim.cfg BT.arquitetura2.sim.cfg
+	mv sim.info BT.arquitetura2.sim.info
+	mv sim.out BT.arquitetura2.sim.out
+	mv sim.stats.sqlite3 BT.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 BT TERMINOU <<<<<<<<<<"
+	echo
+	#CG
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 CG COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/cg.W.x
+	cd resultados
+	mv sim.cfg CG.arquitetura2.sim.cfg
+	mv sim.info CG.arquitetura2.sim.info
+	mv sim.out CG.arquitetura2.sim.out
+	mv sim.stats.sqlite3 CG.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 CG TERMINOU <<<<<<<<<<"
+	echo
+	#DC
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 DC COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/dc.W.x
+	cd resultados
+	mv sim.cfg DC.arquitetura2.sim.cfg
+	mv sim.info DC.arquitetura2.sim.info
+	mv sim.out DC.arquitetura2.sim.out
+	mv sim.stats.sqlite3 DC.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 DC TERMINOU <<<<<<<<<<"
+	echo
+	#EP
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 EP COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/ep.W.x
+	cd resultados
+	mv sim.cfg EP.arquitetura2.sim.cfg
+	mv sim.info EP.arquitetura2.sim.info
+	mv sim.out EP.arquitetura2.sim.out
+	mv sim.stats.sqlite3 EP.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 EP TERMINOU <<<<<<<<<<"
+	echo
+	#FT
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 FT COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/ft.W.x
+	cd resultados
+	mv sim.cfg FT.arquitetura2.sim.cfg
+	mv sim.info FT.arquitetura2.sim.info
+	mv sim.out FT.arquitetura2.sim.out
+	mv sim.stats.sqlite3 FT.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 FT TERMINOU <<<<<<<<<<"
+	echo
+	#IS
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 IS COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/is.W.x
+	cd resultados
+	mv sim.cfg IS.arquitetura2.sim.cfg
+	mv sim.info IS.arquitetura2.sim.info
+	mv sim.out IS.arquitetura2.sim.out
+	mv sim.stats.sqlite3 IS.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 IS TERMINOU <<<<<<<<<<"
+	echo
+	#LU
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 LU COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/lu.W.x
+	cd resultados
+	mv sim.cfg LU.arquitetura2.sim.cfg
+	mv sim.info LU.arquitetura2.sim.info
+	mv sim.out LU.arquitetura2.sim.out
+	mv sim.stats.sqlite3 LU.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 LU TERMINOU <<<<<<<<<<"
+	echo
+	#MG
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 MG COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/mg.W.x
+	cd resultados
+	mv sim.cfg MG.arquitetura2.sim.cfg
+	mv sim.info MG.arquitetura2.sim.info
+	mv sim.out MG.arquitetura2.sim.out
+	mv sim.stats.sqlite3 MG.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 MG TERMINOU <<<<<<<<<<"
+	echo
+	#SP
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 SP COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/sp.W.x
+	cd resultados
+	mv sim.cfg SP.arquitetura2.sim.cfg
+	mv sim.info SP.arquitetura2.sim.info
+	mv sim.out SP.arquitetura2.sim.out
+	mv sim.stats.sqlite3 SP.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 SP TERMINOU <<<<<<<<<<"
+	echo
+	#UA
+	echo
+	echo ">>>>>>>>>> ARQUITETURA 2 UA COMEÇOU <<<<<<<<<<"
+	echo
+	./run-sniper -n 8 -d $DIR/resultados -c $DIR/configuracoes/arquitetura2.cfg $DIR/benchmarks/npb/NPB3.3.1/NPB3.3-OMP/bin/ua.W.x
+	cd resultados
+	mv sim.cfg UA.arquitetura2.sim.cfg
+	mv sim.info UA.arquitetura2.sim.info
+	mv sim.out UA.arquitetura2.sim.out
+	mv sim.stats.sqlite3 UA.arquitetura2.sim.stats.sqlite3
+	echo
+	cd ..
+	echo ">>>>>>>>>> ARQUITETURA 2 UA TERMINOU <<<<<<<<<<"
+	echo
+
+}
+#-d gera os dados adicionais para análise e grava os resultados no diretório mcpat
+dfuncao(){
+	echo
+}
+#-r gera o relatório (contido no diretório relatório)
+#rfuncao(){
+#
+#}
+
+escolheropc(){
+
+	sleep 2
+	echo
+	echo "Entre com o comando desejado (-h para ajuda ou -1 para encerrar): "
+	read OPC
+
+	if [ "$OPC" = "-h" ];then
+		hfuncao
+	elif [ "$OPC" = "-i" ];then
+		ifuncao
+	elif [ "$OPC" = "-p" ];then
+		pfuncao
+	elif [ "$OPC" = "-s" ];then
+		sfuncao
+	elif [ "$OPC" = "-d" ];then
+		dfuncao
+	elif [ "$OPC" = "-r" ];then
+		rfuncao
+	elif [ "$OPC" = "-1" ];then 
+		killall lab1
+	else
+		echo
+		echo "Opção digitada é inexistente, digite novamente."
+		escolheropc
+	fi
+	escolheropc
+}
+
+if [ "$1" = "-h" ];then
+	hfuncao
+elif [ "$1" = "-i" ];then
+	ifuncao
+elif [ "$1" = "-p" ];then
+	pfuncao
+elif [ "$1" = "-s" ];then
+	sfuncao
+elif [ "$1" = "-d" ];then
+	dfuncao
+elif [ "$1" = "-r" ];then
+	rfuncao
+else
+	echo
+fi
+
+escolheropc
